@@ -20,7 +20,7 @@ appveyor = { repository = "chronotope/chrono" }
 name = "chrono"
 
 [features]
-default = ["clock", "std", "oldtime", "wasmbind"]
+default = ["clock", "std", "wasmbind"]
 alloc = []
 libc = []
 std = []
