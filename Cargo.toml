@@ -24,7 +24,7 @@ appveyor = { repository = "chronotope/chrono" }
 name = "chrono"
 
 [features]
-default = ["clock", "std", "oldtime"]
+default = ["clock", "std"]
 alloc = []
 std = []
 clock = ["libc", "std", "winapi"]
