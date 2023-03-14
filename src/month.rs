@@ -12,7 +12,7 @@ use rkyv::{Archive, Deserialize, Serialize};
 /// ```
 /// use num_traits::FromPrimitive;
 /// use chrono::prelude::*;
-/// let date = Utc.ymd(2019, 10, 28).and_hms(9, 10, 11);
+/// let date = Utc.with_ymd_and_hms(2019, 10, 28, 9, 10, 11).unwrap();
 /// // `2019-10-28T09:10:11Z`
 /// let month = Month::from_u32(date.month());
 /// assert_eq!(month, Some(Month::October))
@@ -21,7 +21,7 @@ use rkyv::{Archive, Deserialize, Serialize};
 /// ```
 /// # use chrono::prelude::*;
 /// let month = Month::January;
-/// let dt = Utc.ymd(2019, month.number_from_month(), 28).and_hms(9, 10, 11);
+/// let dt = Utc.with_ymd_and_hms(2019, month.number_from_month(), 28, 9, 10, 11).unwrap();
 /// assert_eq!((dt.year(), dt.month(), dt.day()), (2019, 1, 28));
 /// ```
 /// Allows mapping from and to month, from 1-January to 12-December.
@@ -30,6 +30,7 @@ use rkyv::{Archive, Deserialize, Serialize};
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Hash)]
 #[cfg_attr(feature = "rustc-serialize", derive(RustcEncodable, RustcDecodable))]
 #[cfg_attr(feature = "rkyv", derive(Archive, Deserialize, Serialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Month {
     /// January
     January = 0,
@@ -153,7 +154,7 @@ impl Month {
 }
 
 impl num_traits::FromPrimitive for Month {
-    /// Returns an Option<Month> from a i64, assuming a 1-index, January = 1.
+    /// Returns an `Option<Month>` from a i64, assuming a 1-index, January = 1.
     ///
     /// `Month::from_i64(n: i64)`: | `1`                  | `2`                   | ... | `12`
     /// ---------------------------| -------------------- | --------------------- | ... | -----
@@ -191,11 +192,12 @@ impl num_traits::FromPrimitive for Month {
 
 /// A duration in calendar months
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Months(pub(crate) u32);
 
 impl Months {
     /// Construct a new `Months` from a number of months
-    pub fn new(num: u32) -> Self {
+    pub const fn new(num: u32) -> Self {
         Self(num)
     }
 }
@@ -213,6 +215,7 @@ impl fmt::Debug for ParseMonthError {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 mod month_serde {
     use super::Month;
     use serde::{de, ser};
@@ -334,11 +337,11 @@ mod tests {
         assert_eq!(dec_opt, Some(Month::December));
         assert_eq!(no_month, None);
 
-        let date = Utc.ymd(2019, 10, 28).and_hms(9, 10, 11);
+        let date = Utc.with_ymd_and_hms(2019, 10, 28, 9, 10, 11).unwrap();
         assert_eq!(Month::from_u32(date.month()), Some(Month::October));
 
         let month = Month::January;
-        let dt = Utc.ymd(2019, month.number_from_month(), 28).and_hms(9, 10, 11);
+        let dt = Utc.with_ymd_and_hms(2019, month.number_from_month(), 28, 9, 10, 11).unwrap();
         assert_eq!((dt.year(), dt.month(), dt.day()), (2019, 1, 28));
     }
 

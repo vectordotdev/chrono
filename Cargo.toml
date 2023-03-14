@@ -1,6 +1,6 @@
 [package]
 name = "chrono"
-version = "0.4.22"
+version = "0.4.24"
 description = "Date and time library for Rust"
 homepage = "https://github.com/chronotope/chrono"
 documentation = "https://docs.rs/chrono/"
@@ -9,12 +9,8 @@ keywords = ["date", "time", "calendar"]
 categories = ["date-and-time"]
 readme = "README.md"
 license = "MIT/Apache-2.0"
-exclude = ["/ci/*", "/.travis.yml", "/appveyor.yml", "/Makefile"]
+exclude = ["/ci/*"]
 edition = "2018"
-
-[badges]
-travis-ci = { repository = "chronotope/chrono" }
-appveyor = { repository = "chronotope/chrono" }
 
 [lib]
 name = "chrono"
@@ -38,9 +34,9 @@ num-traits = { version = "0.2", default-features = false }
 rustc-serialize = { version = "0.3.20", optional = true }
 serde = { version = "1.0.99", default-features = false, optional = true }
 pure-rust-locales = { version = "0.5.2", optional = true }
-criterion = { version = "0.3", optional = true }
+criterion = { version = "0.4.0", optional = true }
 rkyv = {version = "0.7", optional = true}
-iana-time-zone = { version = "0.1.44", optional = true, features = ["fallback"] }
+arbitrary = { version = "1.0.0", features = ["derive"], optional = true }
 
 [target.'cfg(all(target_arch = "wasm32", not(any(target_os = "emscripten", target_os = "wasi"))))'.dependencies]
 wasm-bindgen = { version = "0.2", optional = true }
@@ -49,6 +45,9 @@ js-sys = { version = "0.3", optional = true } # contains FFI bindings for the JS
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.0", features = ["std", "minwinbase", "minwindef", "timezoneapi"], optional = true }
+
+[target.'cfg(unix)'.dependencies]
+iana-time-zone = { version = "0.1.45", optional = true, features = ["fallback"] }
 
 [dev-dependencies]
 serde_json = { version = "1" }
@@ -62,6 +61,7 @@ wasm-bindgen-test = "0.3"
 
 [package.metadata.docs.rs]
 features = ["serde"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = ["serde"]

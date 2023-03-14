@@ -20,6 +20,7 @@ use rkyv::{Archive, Deserialize, Serialize};
 use super::{FixedOffset, LocalResult, Offset, TimeZone};
 use crate::naive::{NaiveDate, NaiveDateTime};
 #[cfg(feature = "clock")]
+#[allow(deprecated)]
 use crate::{Date, DateTime};
 
 /// The UTC time zone. This is the most efficient time zone when you don't need the local time.
@@ -37,15 +38,22 @@ use crate::{Date, DateTime};
 /// let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 0), Utc);
 ///
 /// assert_eq!(Utc.timestamp(61, 0), dt);
-/// assert_eq!(Utc.ymd(1970, 1, 1).and_hms(0, 1, 1), dt);
+/// assert_eq!(Utc.with_ymd_and_hms(1970, 1, 1, 0, 1, 1).unwrap(), dt);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "rkyv", derive(Archive, Deserialize, Serialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Utc;
 
 #[cfg(feature = "clock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "clock")))]
 impl Utc {
     /// Returns a `Date` which corresponds to the current date.
+    #[deprecated(
+        since = "0.4.23",
+        note = "use `Utc::now()` instead, potentially with `.date_naive()`"
+    )]
+    #[allow(deprecated)]
     pub fn today() -> Date<Utc> {
         Utc::now().date()
     }
@@ -59,7 +67,8 @@ impl Utc {
     pub fn now() -> DateTime<Utc> {
         let now =
             SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
-        let naive = NaiveDateTime::from_timestamp(now.as_secs() as i64, now.subsec_nanos() as u32);
+        let naive =
+            NaiveDateTime::from_timestamp_opt(now.as_secs() as i64, now.subsec_nanos()).unwrap();
         DateTime::from_utc(naive, Utc)
     }
 
@@ -99,7 +108,7 @@ impl TimeZone for Utc {
 
 impl Offset for Utc {
     fn fix(&self) -> FixedOffset {
-        FixedOffset::east(0)
+        FixedOffset::east_opt(0).unwrap()
     }
 }
 

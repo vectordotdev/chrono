@@ -26,11 +26,10 @@ impl TimeZone {
     ///
     /// This method in not supported on non-UNIX platforms, and returns the UTC time zone instead.
     ///
-    pub(crate) fn local() -> Result<Self, Error> {
-        if let Ok(tz) = std::env::var("TZ") {
-            Self::from_posix_tz(&tz)
-        } else {
-            Self::from_posix_tz("localtime")
+    pub(crate) fn local(env_tz: Option<&str>) -> Result<Self, Error> {
+        match env_tz {
+            Some(tz) => Self::from_posix_tz(tz),
+            None => Self::from_posix_tz("localtime"),
         }
     }
 
@@ -439,12 +438,12 @@ pub(super) struct Transition {
 
 impl Transition {
     /// Construct a TZif file transition
-    pub(super) fn new(unix_leap_time: i64, local_time_type_index: usize) -> Self {
+    pub(super) const fn new(unix_leap_time: i64, local_time_type_index: usize) -> Self {
         Self { unix_leap_time, local_time_type_index }
     }
 
     /// Returns Unix leap time
-    fn unix_leap_time(&self) -> i64 {
+    const fn unix_leap_time(&self) -> i64 {
         self.unix_leap_time
     }
 }
@@ -460,12 +459,12 @@ pub(super) struct LeapSecond {
 
 impl LeapSecond {
     /// Construct a TZif file leap second
-    pub(super) fn new(unix_leap_time: i64, correction: i32) -> Self {
+    pub(super) const fn new(unix_leap_time: i64, correction: i32) -> Self {
         Self { unix_leap_time, correction }
     }
 
     /// Returns Unix leap time
-    fn unix_leap_time(&self) -> i64 {
+    const fn unix_leap_time(&self) -> i64 {
         self.unix_leap_time
     }
 }
@@ -573,12 +572,12 @@ impl LocalTimeType {
     }
 
     /// Returns offset from UTC in seconds
-    pub(crate) fn offset(&self) -> i32 {
+    pub(crate) const fn offset(&self) -> i32 {
         self.ut_offset
     }
 
     /// Returns daylight saving time indicator
-    pub(super) fn is_dst(&self) -> bool {
+    pub(super) const fn is_dst(&self) -> bool {
         self.is_dst
     }
 
@@ -813,7 +812,7 @@ mod tests {
             // so just ensure that ::local() acts as expected
             // in this case
             if let Ok(tz) = std::env::var("TZ") {
-                let time_zone_local = TimeZone::local()?;
+                let time_zone_local = TimeZone::local(Some(tz.as_str()))?;
                 let time_zone_local_1 = TimeZone::from_posix_tz(&tz)?;
                 assert_eq!(time_zone_local, time_zone_local_1);
             }

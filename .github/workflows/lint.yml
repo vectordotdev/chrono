@@ -2,9 +2,8 @@ name: lint
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, 0.4.x]
   pull_request:
-    branches: [main, master]
 
 jobs:
   lint:
@@ -12,15 +11,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - name: Lint
-        run: bash ci/lint.sh
-      - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@0.3.0
-        with:
-          check_together: "y"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          cargo fmt --check -- --color=always
+          cargo fmt --check --manifest-path fuzz/Cargo.toml
+      - run: |
+          cargo clippy --color=always -- -D warnings -A clippy::manual-non-exhaustive
+          cargo clippy --manifest-path fuzz/Cargo.toml --color=always -- -D warnings
+        env:
+          RUSTFLAGS: "-Dwarnings"
+
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: EmbarkStudios/cargo-deny-action@v1
