@@ -16,9 +16,9 @@
 //! C's `strftime` format. The available options can be found [here](./strftime/index.html).
 //!
 //! # Example
-//! ```rust
-//! # use std::error::Error;
-//! use chrono::prelude::*;
+#![cfg_attr(not(feature = "std"), doc = "```ignore")]
+#![cfg_attr(feature = "std", doc = "```rust")]
+//! use chrono::{TimeZone, Utc};
 //!
 //! let date_time = Utc.with_ymd_and_hms(2020, 11, 10, 0, 1, 32).unwrap();
 //!
@@ -56,7 +56,7 @@ use crate::{Month, ParseMonthError, ParseWeekdayError, Weekday};
 #[cfg(feature = "unstable-locales")]
 pub(crate) mod locales;
 
-pub use parse::parse;
+pub use parse::{parse, parse_and_remainder};
 pub use parsed::Parsed;
 /// L10n locales.
 #[cfg(feature = "unstable-locales")]
@@ -207,27 +207,27 @@ pub enum Fixed {
     ///
     /// It does not support parsing, its use in the parser is an immediate failure.
     TimezoneName,
-    /// Offset from the local time to UTC (`+09:00` or `-04:00` or `+00:00`).
+    /// Offset from the local time to UTC (`+09:00` or `-0400` or `+00:00`).
     ///
-    /// In the parser, the colon can be omitted and/or surrounded with any amount of whitespace.
+    /// In the parser, the colon may be omitted,
     /// The offset is limited from `-24:00` to `+24:00`,
     /// which is the same as [`FixedOffset`](../offset/struct.FixedOffset.html)'s range.
     TimezoneOffsetColon,
     /// Offset from the local time to UTC with seconds (`+09:00:00` or `-04:00:00` or `+00:00:00`).
     ///
-    /// In the parser, the colon can be omitted and/or surrounded with any amount of whitespace.
+    /// In the parser, the colon may be omitted,
     /// The offset is limited from `-24:00:00` to `+24:00:00`,
     /// which is the same as [`FixedOffset`](../offset/struct.FixedOffset.html)'s range.
     TimezoneOffsetDoubleColon,
     /// Offset from the local time to UTC without minutes (`+09` or `-04` or `+00`).
     ///
-    /// In the parser, the colon can be omitted and/or surrounded with any amount of whitespace.
+    /// In the parser, the colon may be omitted,
     /// The offset is limited from `-24` to `+24`,
     /// which is the same as [`FixedOffset`](../offset/struct.FixedOffset.html)'s range.
     TimezoneOffsetTripleColon,
-    /// Offset from the local time to UTC (`+09:00` or `-04:00` or `Z`).
+    /// Offset from the local time to UTC (`+09:00` or `-0400` or `Z`).
     ///
-    /// In the parser, the colon can be omitted and/or surrounded with any amount of whitespace,
+    /// In the parser, the colon may be omitted,
     /// and `Z` can be either in upper case or in lower case.
     /// The offset is limited from `-24:00` to `+24:00`,
     /// which is the same as [`FixedOffset`](../offset/struct.FixedOffset.html)'s range.
@@ -356,6 +356,7 @@ impl ParseError {
 }
 
 /// The category of parse error
+#[allow(clippy::manual_non_exhaustive)]
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
 pub enum ParseErrorKind {
     /// Given field is out of permitted range.
@@ -386,7 +387,7 @@ pub enum ParseErrorKind {
     /// There was an error on the formatting string, or there were non-supported formating items.
     BadFormat,
 
-    // TODO: Change this to `#[non_exhaustive]` (on the enum) when MSRV is increased
+    // TODO: Change this to `#[non_exhaustive]` (on the enum) with the next breaking release.
     #[doc(hidden)]
     __Nonexhaustive,
 }
@@ -510,8 +511,6 @@ fn format_inner(
 ) -> fmt::Result {
     let locale = Locales::new(locale);
 
-    use num_integer::{div_floor, mod_floor};
-
     match *item {
         Item::Literal(s) | Item::Space(s) => result.push_str(s),
         #[cfg(any(feature = "alloc", feature = "std", test))]
@@ -525,11 +524,11 @@ fn format_inner(
 
             let (width, v) = match *spec {
                 Year => (4, date.map(|d| i64::from(d.year()))),
-                YearDiv100 => (2, date.map(|d| div_floor(i64::from(d.year()), 100))),
-                YearMod100 => (2, date.map(|d| mod_floor(i64::from(d.year()), 100))),
+                YearDiv100 => (2, date.map(|d| i64::from(d.year()).div_euclid(100))),
+                YearMod100 => (2, date.map(|d| i64::from(d.year()).rem_euclid(100))),
                 IsoYear => (4, date.map(|d| i64::from(d.iso_week().year()))),
-                IsoYearDiv100 => (2, date.map(|d| div_floor(i64::from(d.iso_week().year()), 100))),
-                IsoYearMod100 => (2, date.map(|d| mod_floor(i64::from(d.iso_week().year()), 100))),
+                IsoYearDiv100 => (2, date.map(|d| i64::from(d.iso_week().year()).div_euclid(100))),
+                IsoYearMod100 => (2, date.map(|d| i64::from(d.iso_week().year()).rem_euclid(100))),
                 Month => (2, date.map(|d| i64::from(d.month()))),
                 Day => (2, date.map(|d| i64::from(d.day()))),
                 WeekFromSun => (2, date.map(|d| i64::from(week_from_sun(d)))),
@@ -867,6 +866,7 @@ pub struct DelayedFormat<I> {
 #[cfg(any(feature = "alloc", feature = "std", test))]
 impl<'a, I: Iterator<Item = B> + Clone, B: Borrow<Item<'a>>> DelayedFormat<I> {
     /// Makes a new `DelayedFormat` value out of local date and time.
+    #[must_use]
     pub fn new(date: Option<NaiveDate>, time: Option<NaiveTime>, items: I) -> DelayedFormat<I> {
         DelayedFormat {
             date,
@@ -879,6 +879,7 @@ impl<'a, I: Iterator<Item = B> + Clone, B: Borrow<Item<'a>>> DelayedFormat<I> {
     }
 
     /// Makes a new `DelayedFormat` value out of local date and time and UTC offset.
+    #[must_use]
     pub fn new_with_offset<Off>(
         date: Option<NaiveDate>,
         time: Option<NaiveTime>,
@@ -902,6 +903,7 @@ impl<'a, I: Iterator<Item = B> + Clone, B: Borrow<Item<'a>>> DelayedFormat<I> {
     /// Makes a new `DelayedFormat` value out of local date and time and locale.
     #[cfg(feature = "unstable-locales")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unstable-locales")))]
+    #[must_use]
     pub fn new_with_locale(
         date: Option<NaiveDate>,
         time: Option<NaiveTime>,
@@ -914,6 +916,7 @@ impl<'a, I: Iterator<Item = B> + Clone, B: Borrow<Item<'a>>> DelayedFormat<I> {
     /// Makes a new `DelayedFormat` value out of local date and time, UTC offset and locale.
     #[cfg(feature = "unstable-locales")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unstable-locales")))]
+    #[must_use]
     pub fn new_with_offset_and_locale<Off>(
         date: Option<NaiveDate>,
         time: Option<NaiveTime>,

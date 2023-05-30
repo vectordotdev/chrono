@@ -1,13 +1,35 @@
-use core::fmt;
+use core::{convert::TryFrom, fmt};
 
 #[cfg(feature = "rkyv")]
 use rkyv::{Archive, Deserialize, Serialize};
+
+use crate::OutOfRange;
 
 /// The day of week.
 ///
 /// The order of the days of week depends on the context.
 /// (This is why this type does *not* implement `PartialOrd` or `Ord` traits.)
 /// One should prefer `*_from_monday` or `*_from_sunday` methods to get the correct result.
+///
+/// # Example
+/// ```
+/// use chrono::Weekday;
+/// use std::convert::TryFrom;
+///
+/// let monday = "Monday".parse::<Weekday>().unwrap();
+/// assert_eq!(monday, Weekday::Mon);
+///
+/// let sunday = Weekday::try_from(6).unwrap();
+/// assert_eq!(sunday, Weekday::Sun);
+///
+/// assert_eq!(sunday.num_days_from_monday(), 6); // starts counting with Monday = 0
+/// assert_eq!(sunday.number_from_monday(), 7); // starts counting with Monday = 1
+/// assert_eq!(sunday.num_days_from_sunday(), 0); // starts counting with Sunday = 0
+/// assert_eq!(sunday.number_from_sunday(), 1); // starts counting with Sunday = 1
+///
+/// assert_eq!(sunday.succ(), monday);
+/// assert_eq!(sunday.pred(), Weekday::Sat);
+/// ```
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Hash)]
 #[cfg_attr(feature = "rustc-serialize", derive(RustcEncodable, RustcDecodable))]
 #[cfg_attr(feature = "rkyv", derive(Archive, Deserialize, Serialize))]
@@ -36,7 +58,8 @@ impl Weekday {
     /// ----------- | ----- | ----- | ----- | ----- | ----- | ----- | -----
     /// `w.succ()`: | `Tue` | `Wed` | `Thu` | `Fri` | `Sat` | `Sun` | `Mon`
     #[inline]
-    pub fn succ(&self) -> Weekday {
+    #[must_use]
+    pub const fn succ(&self) -> Weekday {
         match *self {
             Weekday::Mon => Weekday::Tue,
             Weekday::Tue => Weekday::Wed,
@@ -54,7 +77,8 @@ impl Weekday {
     /// ----------- | ----- | ----- | ----- | ----- | ----- | ----- | -----
     /// `w.pred()`: | `Sun` | `Mon` | `Tue` | `Wed` | `Thu` | `Fri` | `Sat`
     #[inline]
-    pub fn pred(&self) -> Weekday {
+    #[must_use]
+    pub const fn pred(&self) -> Weekday {
         match *self {
             Weekday::Mon => Weekday::Sun,
             Weekday::Tue => Weekday::Mon,
@@ -108,7 +132,7 @@ impl Weekday {
 
     /// Returns a day-of-week number starting from the parameter `day` (D) = 0.
     ///
-    /// `w`:                        | `D` | `D+1` | `D+2` | `D+3` | `D+4` | `D+5` | `D+6`
+    /// `w`:                        | `D`   | `D+1` | `D+2` | `D+3` | `D+4` | `D+5` | `D+6`
     /// --------------------------- | ----- | ----- | ----- | ----- | ----- | ----- | -----
     /// `w.num_days_from(wd)`:      | 0     | 1     | 2     | 3     | 4     | 5     | 6
     #[inline]
@@ -128,6 +152,26 @@ impl fmt::Display for Weekday {
             Weekday::Sat => "Sat",
             Weekday::Sun => "Sun",
         })
+    }
+}
+
+/// Any weekday can be represented as an integer from 0 to 6, which equals to
+/// [`Weekday::num_days_from_monday`](#method.num_days_from_monday) in this implementation.
+/// Do not heavily depend on this though; use explicit methods whenever possible.
+impl TryFrom<u8> for Weekday {
+    type Error = OutOfRange;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Weekday::Mon),
+            1 => Ok(Weekday::Tue),
+            2 => Ok(Weekday::Wed),
+            3 => Ok(Weekday::Thu),
+            4 => Ok(Weekday::Fri),
+            5 => Ok(Weekday::Sat),
+            6 => Ok(Weekday::Sun),
+            _ => Err(OutOfRange::new()),
+        }
     }
 }
 
@@ -188,14 +232,13 @@ impl fmt::Debug for ParseWeekdayError {
 
 #[cfg(test)]
 mod tests {
-    use num_traits::FromPrimitive;
-
     use super::Weekday;
+    use std::convert::TryFrom;
 
     #[test]
     fn test_num_days_from() {
         for i in 0..7 {
-            let base_day = Weekday::from_u64(i).unwrap();
+            let base_day = Weekday::try_from(i).unwrap();
 
             assert_eq!(base_day.num_days_from_monday(), base_day.num_days_from(Weekday::Mon));
             assert_eq!(base_day.num_days_from_sunday(), base_day.num_days_from(Weekday::Sun));

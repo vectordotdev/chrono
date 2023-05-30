@@ -43,6 +43,14 @@ impl TimeZone {
             return Self::from_tz_data(&fs::read("/etc/localtime")?);
         }
 
+        // attributes are not allowed on if blocks in Rust 1.38
+        #[cfg(target_os = "android")]
+        {
+            if let Ok(bytes) = android_tzdata::find_tz_data(tz_string) {
+                return Self::from_tz_data(&bytes);
+            }
+        }
+
         let mut chars = tz_string.chars();
         if chars.next() == Some(':') {
             return Self::from_file(&mut find_tz_file(chars.as_str())?);
@@ -374,7 +382,7 @@ impl<'a> TimeZoneRef<'a> {
     }
 
     /// Convert Unix time to Unix leap time, from the list of leap seconds in a time zone
-    fn unix_time_to_unix_leap_time(&self, unix_time: i64) -> Result<i64, Error> {
+    const fn unix_time_to_unix_leap_time(&self, unix_time: i64) -> Result<i64, Error> {
         let mut unix_leap_time = unix_time;
 
         let mut i = 0;
@@ -563,7 +571,7 @@ impl LocalTimeType {
     }
 
     /// Construct a local time type with the specified UTC offset in seconds
-    pub(super) fn with_offset(ut_offset: i32) -> Result<Self, Error> {
+    pub(super) const fn with_offset(ut_offset: i32) -> Result<Self, Error> {
         if ut_offset == i32::min_value() {
             return Err(Error::LocalTimeType("invalid UTC offset"));
         }
@@ -608,7 +616,7 @@ fn find_tz_file(path: impl AsRef<Path>) -> Result<File, Error> {
 }
 
 #[inline]
-fn saturating_abs(v: i32) -> i32 {
+const fn saturating_abs(v: i32) -> i32 {
     if v.is_positive() {
         v
     } else if v == i32::min_value() {
@@ -620,8 +628,8 @@ fn saturating_abs(v: i32) -> i32 {
 
 // Possible system timezone directories
 #[cfg(unix)]
-const ZONE_INFO_DIRECTORIES: [&str; 3] =
-    ["/usr/share/zoneinfo", "/share/zoneinfo", "/etc/zoneinfo"];
+const ZONE_INFO_DIRECTORIES: [&str; 4] =
+    ["/usr/share/zoneinfo", "/share/zoneinfo", "/etc/zoneinfo", "/usr/share/lib/zoneinfo"];
 
 /// Number of seconds in one week
 pub(crate) const SECONDS_PER_WEEK: i64 = SECONDS_PER_DAY * DAYS_PER_WEEK;
@@ -632,7 +640,6 @@ const SECONDS_PER_28_DAYS: i64 = SECONDS_PER_DAY * 28;
 mod tests {
     use super::super::Error;
     use super::{LeapSecond, LocalTimeType, TimeZone, TimeZoneName, Transition, TransitionRule};
-    use crate::matches;
 
     #[test]
     fn test_no_dst() -> Result<(), Error> {

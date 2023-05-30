@@ -35,9 +35,9 @@ use crate::{Date, DateTime};
 /// ```
 /// use chrono::{DateTime, TimeZone, NaiveDateTime, Utc};
 ///
-/// let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 0), Utc);
+/// let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp_opt(61, 0).unwrap(), Utc);
 ///
-/// assert_eq!(Utc.timestamp(61, 0), dt);
+/// assert_eq!(Utc.timestamp_opt(61, 0).unwrap(), dt);
 /// assert_eq!(Utc.with_ymd_and_hms(1970, 1, 1, 0, 1, 1).unwrap(), dt);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -54,6 +54,7 @@ impl Utc {
         note = "use `Utc::now()` instead, potentially with `.date_naive()`"
     )]
     #[allow(deprecated)]
+    #[must_use]
     pub fn today() -> Date<Utc> {
         Utc::now().date()
     }
@@ -64,6 +65,7 @@ impl Utc {
         feature = "wasmbind",
         not(any(target_os = "emscripten", target_os = "wasi"))
     )))]
+    #[must_use]
     pub fn now() -> DateTime<Utc> {
         let now =
             SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
@@ -78,6 +80,7 @@ impl Utc {
         feature = "wasmbind",
         not(any(target_os = "emscripten", target_os = "wasi"))
     ))]
+    #[must_use]
     pub fn now() -> DateTime<Utc> {
         let now = js_sys::Date::new_0();
         DateTime::<Utc>::from(now)
