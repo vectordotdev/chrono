@@ -3,7 +3,10 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
+use chrono::format::StrftimeItems;
 use chrono::prelude::*;
+#[cfg(feature = "unstable-locales")]
+use chrono::Locale;
 use chrono::{DateTime, FixedOffset, Local, Utc, __BenchYearFlags};
 
 fn bench_datetime_parse_from_rfc2822(c: &mut Criterion) {
@@ -58,6 +61,21 @@ fn bench_datetime_to_rfc3339(c: &mut Criterion) {
         )
         .unwrap();
     c.bench_function("bench_datetime_to_rfc3339", |b| b.iter(|| black_box(dt).to_rfc3339()));
+}
+
+fn bench_datetime_to_rfc3339_opts(c: &mut Criterion) {
+    let pst = FixedOffset::east_opt(8 * 60 * 60).unwrap();
+    let dt = pst
+        .from_local_datetime(
+            &NaiveDate::from_ymd_opt(2018, 1, 11)
+                .unwrap()
+                .and_hms_nano_opt(10, 5, 13, 84_660_000)
+                .unwrap(),
+        )
+        .unwrap();
+    c.bench_function("bench_datetime_to_rfc3339_opts", |b| {
+        b.iter(|| black_box(dt).to_rfc3339_opts(SecondsFormat::Nanos, true))
+    });
 }
 
 fn bench_year_flags_from_year(c: &mut Criterion) {
@@ -122,6 +140,62 @@ fn bench_num_days_from_ce(c: &mut Criterion) {
     }
 }
 
+fn bench_parse_strftime(c: &mut Criterion) {
+    c.bench_function("bench_parse_strftime", |b| {
+        b.iter(|| {
+            let str = black_box("%a, %d %b %Y %H:%M:%S GMT");
+            let items = StrftimeItems::new(str);
+            black_box(items.collect::<Vec<_>>());
+        })
+    });
+}
+
+#[cfg(feature = "unstable-locales")]
+fn bench_parse_strftime_localized(c: &mut Criterion) {
+    c.bench_function("bench_parse_strftime_localized", |b| {
+        b.iter(|| {
+            let str = black_box("%a, %d %b %Y %H:%M:%S GMT");
+            let items = StrftimeItems::new_with_locale(str, Locale::nl_NL);
+            black_box(items.collect::<Vec<_>>());
+        })
+    });
+}
+
+fn bench_format(c: &mut Criterion) {
+    let dt = Local::now();
+    c.bench_function("bench_format", |b| {
+        b.iter(|| format!("{}", black_box(dt).format("%Y-%m-%dT%H:%M:%S%.f%:z")))
+    });
+}
+
+fn bench_format_with_items(c: &mut Criterion) {
+    let dt = Local::now();
+    let items: Vec<_> = StrftimeItems::new("%Y-%m-%dT%H:%M:%S%.f%:z").collect();
+    c.bench_function("bench_format_with_items", |b| {
+        b.iter(|| format!("{}", black_box(dt).format_with_items(items.iter())))
+    });
+}
+
+fn bench_format_manual(c: &mut Criterion) {
+    let dt = Local::now();
+    c.bench_function("bench_format_manual", |b| {
+        b.iter(|| {
+            black_box(dt);
+            format!(
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:09}{:+02}:{:02}",
+                dt.year(),
+                dt.month(),
+                dt.day(),
+                dt.hour(),
+                dt.minute(),
+                dt.second(),
+                dt.nanosecond(),
+                dt.offset().fix().local_minus_utc() / 3600,
+                dt.offset().fix().local_minus_utc() / 60,
+            )
+        })
+    });
+}
 criterion_group!(
     benches,
     bench_datetime_parse_from_rfc2822,
@@ -129,9 +203,20 @@ criterion_group!(
     bench_datetime_from_str,
     bench_datetime_to_rfc2822,
     bench_datetime_to_rfc3339,
+    bench_datetime_to_rfc3339_opts,
     bench_year_flags_from_year,
     bench_num_days_from_ce,
     bench_get_local_time,
+    bench_parse_strftime,
+    bench_format,
+    bench_format_with_items,
+    bench_format_manual,
 );
 
+#[cfg(feature = "unstable-locales")]
+criterion_group!(unstable_locales, bench_parse_strftime_localized,);
+
+#[cfg(not(feature = "unstable-locales"))]
 criterion_main!(benches);
+#[cfg(feature = "unstable-locales")]
+criterion_main!(benches, unstable_locales);

@@ -13,7 +13,7 @@
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::time::Duration as StdDuration;
 use core::{fmt, i64};
-#[cfg(any(feature = "std", test))]
+#[cfg(feature = "std")]
 use std::error::Error;
 
 #[cfg(feature = "rkyv")]
@@ -111,8 +111,8 @@ impl Duration {
     }
 
     /// Makes a new `Duration` with given number of seconds.
-    /// Panics when the duration is more than `i64::MAX` seconds
-    /// or less than `i64::MIN` seconds.
+    /// Panics when the duration is more than `i64::MAX` milliseconds
+    /// or less than `i64::MIN` milliseconds.
     #[inline]
     #[must_use]
     pub fn seconds(seconds: i64) -> Duration {
@@ -388,17 +388,13 @@ impl Div<i32> for Duration {
     }
 }
 
-#[cfg(any(feature = "std", test))]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl<'a> std::iter::Sum<&'a Duration> for Duration {
+impl<'a> core::iter::Sum<&'a Duration> for Duration {
     fn sum<I: Iterator<Item = &'a Duration>>(iter: I) -> Duration {
         iter.fold(Duration::zero(), |acc, x| acc + *x)
     }
 }
 
-#[cfg(any(feature = "std", test))]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl std::iter::Sum<Duration> for Duration {
+impl core::iter::Sum<Duration> for Duration {
     fn sum<I: Iterator<Item = Duration>>(iter: I) -> Duration {
         iter.fold(Duration::zero(), |acc, x| acc + x)
     }
@@ -453,8 +449,7 @@ impl fmt::Display for OutOfRangeError {
     }
 }
 
-#[cfg(any(feature = "std", test))]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+#[cfg(feature = "std")]
 impl Error for OutOfRangeError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -487,9 +482,9 @@ impl arbitrary::Arbitrary<'_> for Duration {
 
 #[cfg(test)]
 mod tests {
-    use super::{Duration, OutOfRangeError, MAX, MIN};
-    use std::time::Duration as StdDuration;
-    use std::{i32, i64};
+    use super::OutOfRangeError;
+    use super::{Duration, MAX, MIN};
+    use core::time::Duration as StdDuration;
 
     #[test]
     fn test_duration() {
@@ -682,13 +677,9 @@ mod tests {
         let sum_2: Duration = duration_list_2.iter().sum();
         assert_eq!(sum_2, Duration::seconds(17));
 
-        let duration_vec = vec![
-            Duration::zero(),
-            Duration::seconds(1),
-            Duration::seconds(6),
-            Duration::seconds(10),
-        ];
-        let sum_3: Duration = duration_vec.into_iter().sum();
+        let duration_arr =
+            [Duration::zero(), Duration::seconds(1), Duration::seconds(6), Duration::seconds(10)];
+        let sum_3: Duration = duration_arr.into_iter().sum();
         assert_eq!(sum_3, Duration::seconds(17));
     }
 

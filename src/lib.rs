@@ -387,12 +387,15 @@
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![warn(unreachable_pub)]
-#![deny(dead_code)]
+#![deny(clippy::tests_outside_test_module)]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 // can remove this if/when rustc-serialize support is removed
 // keeps clippy happy in the meantime
 #![cfg_attr(feature = "rustc-serialize", allow(deprecated))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[cfg(feature = "oldtime")]
 #[cfg_attr(docsrs, doc(cfg(feature = "oldtime")))]
@@ -400,7 +403,9 @@ extern crate time as oldtime;
 #[cfg(not(feature = "oldtime"))]
 mod oldtime;
 // this reexport is to aid the transition and should not be in the prelude!
-pub use oldtime::{Duration, OutOfRangeError};
+pub use oldtime::Duration;
+#[cfg(feature = "std")]
+pub use oldtime::OutOfRangeError;
 
 use core::fmt;
 
@@ -526,3 +531,25 @@ impl fmt::Debug for OutOfRange {
 
 #[cfg(feature = "std")]
 impl std::error::Error for OutOfRange {}
+
+/// Workaround because `?` is not (yet) available in const context.
+#[macro_export]
+macro_rules! try_opt {
+    ($e:expr) => {
+        match $e {
+            Some(v) => v,
+            None => return None,
+        }
+    };
+}
+
+/// Workaround because `.expect()` is not (yet) available in const context.
+#[macro_export]
+macro_rules! expect {
+    ($e:expr, $m:literal) => {
+        match $e {
+            Some(v) => v,
+            None => panic!($m),
+        }
+    };
+}
