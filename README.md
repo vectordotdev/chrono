@@ -4,7 +4,7 @@
 [![Chrono GitHub Actions][gh-image]][gh-checks]
 [![Chrono on crates.io][cratesio-image]][cratesio]
 [![Chrono on docs.rs][docsrs-image]][docsrs]
-[![Join the chat at https://gitter.im/chrono-rs/chrono][gitter-image]][gitter]
+[![Chat][discord-image]][discord]
 [![codecov.io][codecov-img]][codecov-link]
 
 [gh-image]: https://github.com/chronotope/chrono/actions/workflows/test.yml/badge.svg
@@ -13,8 +13,8 @@
 [cratesio]: https://crates.io/crates/chrono
 [docsrs-image]: https://docs.rs/chrono/badge.svg
 [docsrs]: https://docs.rs/chrono
-[gitter-image]: https://badges.gitter.im/chrono-rs/chrono.svg
-[gitter]: https://gitter.im/chrono-rs/chrono
+[discord-image]: https://img.shields.io/discord/976380008299917365?logo=discord
+[discord]: https://discord.gg/sXpav4PS7M
 [codecov-img]: https://img.shields.io/codecov/c/github/chronotope/chrono?logo=codecov
 [codecov-link]: https://codecov.io/gh/chronotope/chrono
 
@@ -61,7 +61,6 @@ Optional features:
 * `serde`: Enable serialization/deserialization via serde.
 * `rkyv`: Enable serialization/deserialization via rkyv.
 * `rustc-serialize`: Enable serialization/deserialization via rustc-serialize (deprecated).
-* `old_time`: compatability with the `Duration` type of the `time` 0.1 crate (deprecated).
 * `arbitrary`: construct arbitrary instances of a type with the Arbitrary crate.
 * `unstable-locales`: Enable localization. This adds various methods with a `_localized` suffix.
   The implementation and API may change or even be removed in a patch release. Feedback welcome.
